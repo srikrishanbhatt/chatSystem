@@ -7,49 +7,54 @@ const app = express();
 
 app.use(cors());
 
-
 const server = http.createServer(app);
-
-// const io = new Server(server, {
-//     cors: {
-//         origin: "*",
-//         methods: ["GET", "POST"]
-//     }
-// });
-
-// const io = new Server(server, {
-//   cors: {
-//     origin: "http://localhost:3000",
-//   },
-// });
 
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:3000",
   },
-  transports: ["websocket"]   // optional but recommended
 });
 
-
+// store users
+let users = {};
 
 io.on("connection", (socket) => {
 
-    console.log("User connected:", socket.id);
+  console.log("User connected:", socket.id);
 
-    socket.on("send_message", (data) => {
+  socket.on("join_chat", (username) => {
 
-        console.log("Message:", data);
+    users[socket.id] = username;
 
-        io.emit("receive_message", data);
-
+    io.emit("chat_message", {
+      user: "System",
+      message: username + " joined chat"
     });
 
-    socket.on("disconnect", () => {
-        console.log("User disconnected");
+  });
+
+  socket.on("send_message", (message) => {
+
+    io.emit("chat_message", {
+      user: users[socket.id],
+      message: message
     });
+
+  });
+
+  socket.on("disconnect", () => {
+
+    io.emit("chat_message", {
+      user: "System",
+      message: users[socket.id] + " left chat"
+    });
+
+    delete users[socket.id];
+
+  });
 
 });
 
 server.listen(5000, () => {
-    console.log("Server running on port 5000 ...");
+  console.log("Server running on port 5000");
 });

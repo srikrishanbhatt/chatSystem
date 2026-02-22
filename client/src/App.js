@@ -1,20 +1,38 @@
 import React, { useState, useEffect } from "react";
-import io from "socket.io-client";
-
-//const socket = io("http://localhost:5000");
-const socket = io("http://localhost:5000", {
-  transports: ["websocket"],   // force websocket
-});
-
-
-socket.on("connect", () => {
-  console.log(socket.io.engine.transport.name);
-});
+import socket from "./socket";
 
 function App() {
 
+  const [username, setUsername] = useState("");
   const [message, setMessage] = useState("");
-  const [messageList, setMessageList] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [joined, setJoined] = useState(false);
+
+  useEffect(() => {
+
+    socket.on("chat_message", (data) => {
+
+      setMessages((prev) => [...prev, data]);
+
+    });
+
+    return () => {
+      socket.off("chat_message");
+    };
+
+  }, []);
+
+  const joinChat = () => {
+
+    if(username !== "") {
+
+      socket.emit("join_chat", username);
+
+      setJoined(true);
+
+    }
+
+  };
 
   const sendMessage = () => {
 
@@ -28,24 +46,44 @@ function App() {
 
   };
 
+  if(!joined) {
 
-  
- useEffect(() => {
+    return (
+      <div style={{padding:20}}>
+        <h2>Join Chat</h2>
 
-  socket.on("receive_message", (data) => {
-    setMessageList((list) => [...list, data]);
-  });
+        <input
+          placeholder="Enter username"
+          onChange={(e) => setUsername(e.target.value)}
+        />
 
-  return () => {
-    socket.off("receive_message");
-  };
+        <button onClick={joinChat}>
+          Join
+        </button>
 
-}, []);
+      </div>
+    );
+  }
 
   return (
     <div style={{padding:20}}>
 
-      <h2>React Socket.IO Chat</h2>
+      <h2>Chat App - {username}</h2>
+
+      <div style={{
+        height:300,
+        border:"1px solid gray",
+        overflowY:"scroll",
+        marginBottom:10
+      }}>
+        {messages.map((msg, index) => (
+
+          <div key={index}>
+            <b>{msg.user}:</b> {msg.message}
+          </div>
+
+        ))}
+      </div>
 
       <input
         value={message}
@@ -55,14 +93,6 @@ function App() {
       <button onClick={sendMessage}>
         Send
       </button>
-
-      <h3>Messages:</h3>
-
-      {messageList.map((msg, index) => (
-        <div key={index}>
-          {msg}
-        </div>
-      ))}
 
     </div>
   );
